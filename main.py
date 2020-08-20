@@ -2,9 +2,9 @@ from PIL import ImageGrab
 import time
 import cv2
 import pyautogui
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract'
-TESSDATA_PREFIX = 'Tesseract-OCR'
+import numpy as np
+
+pyautogui.FAILSAFE = False
 
 
 def find_mana(smth_to_find, where_find):
@@ -13,60 +13,84 @@ def find_mana(smth_to_find, where_find):
     result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
     # Get the best match position from the match result.
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    threshold = 0.6
+    threshold = 0.5
     top_left = (0, 0)
     if max_val >= threshold:
         top_left = max_loc
     return top_left
 
 
-def main():
-
-    im = ImageGrab.grab()
+def take_screen():
+    im = ImageGrab.grab(bbox=(0, 0, 800, 1000))
     im.save('screenshot' + '.png', 'PNG')
-    print('I`m looking')
 
 
-def offers(offer):
-    if find_mana(offer, 'screenshot.png') != (0, 0):
-        print('I`ve found one')
-        pyautogui.moveTo(find_mana(offer, 'screenshot.png')[0] + 5,
-                         find_mana(offer, 'screenshot.png')[1] + 5)
-        pyautogui.click()
-        time.sleep(5)
-        pyautogui.click()
-        main()
-        while find_mana('main.png', 'screenshot.png') == (0, 0) and find_mana('cancel.png', 'screenshot.png') == (0, 0):
+def map(x,x2):
+    if find_mana('mail.png', 'screenshot.png') != (0, 0):
+        im = ImageGrab.grab(bbox=(x[0], x[1], x2[0], x2[1]))
+        im.save('map.png', 'PNG')
+        img = cv2.imread('map.png')
+
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        lower_range = np.array([13, 150, 150])
+        upper_range = np.array([25, 255, 255])
+
+        mask = cv2.inRange(hsv, lower_range, upper_range)
+
+        cv2.imwrite('mask.png', mask)
+
+
+def offers(offer, mail, pack):
+    for i in range(5):
+        take_screen()
+        print(i)
+        map(mail, pack)
+        point = find_mana(offer, 'mask.png')
+        if point != (0, 0):
+            print('I`ve found one')
+            pyautogui.moveTo(
+                mail[0] + point[0] + 15,
+                mail[1] + point[1] + 10)
+            pyautogui.click()
             time.sleep(3)
             pyautogui.click()
+            take_screen()
+
         if find_mana('cancel.png', 'screenshot.png') != (0, 0):
             pyautogui.moveTo(find_mana('cancel.png', 'screenshot.png')[0] + 10,
                              find_mana('cancel.png', 'screenshot.png')[1] + 10)
             pyautogui.click()
-        no_offers = False
-        main()
+            take_screen()
+        while find_mana('pack.png', 'screenshot.png') == (0, 0):
+            pyautogui.click()
+            time.sleep(1)
+            take_screen()
+
 
 def analys():
-
-    pyautogui.FAILSAFE = False
-    take_pic = True
-
-    while take_pic == True:
+    while True:
         try:
-            main()
-            no_offers = True
-            offers('offers.png')
-            offers('offers1.png')
-            offers('offers2.png')
-            if find_mana('main.png', 'screenshot.png') != (0, 0) and no_offers == True:
-                print('I`m moving')
-                pyautogui.moveTo(100, pyautogui.size()[1]/2)
+            take_screen()
+            if find_mana('mail.png', 'screenshot.png') != (0, 0):
+                mail = (
+                    find_mana('mail.png', 'screenshot.png')[0] + 50, find_mana('mail.png', 'screenshot.png')[1] + 150,
+                )
+                pack = (
+                    find_mana('pack.png', 'screenshot.png')[0] - 20, find_mana('pack.png', 'screenshot.png')[1] - 30
+                )
+                offers('offers.png', mail, pack)
+
+            if find_mana('main.png', 'screenshot.png') != (0, 0):
+                pyautogui.moveTo(find_mana('mail.png', 'screenshot.png')[0], pyautogui.size()[1] / 2)
                 pyautogui.mouseDown()
-                pyautogui.moveTo(200, pyautogui.size()[1]/2, 1, pyautogui.easeInQuad)
+                pyautogui.moveTo(find_mana('mail.png', 'screenshot.png')[0] + 100, pyautogui.size()[1] / 2, 1,
+                                 pyautogui.easeInQuad)
                 pyautogui.mouseUp()
-                main()
 
         except Exception as e:
+            print(e)
             time.sleep(1)
+
 
 analys()
